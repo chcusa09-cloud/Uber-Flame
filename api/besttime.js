@@ -76,7 +76,7 @@ module.exports=async(req,res)=>{
       order:"desc,desc"
     });
     const r=await fetch("https://besttime.app/api/v1/venues/filter?"+p,{signal:timeout(10000)});
-    if(!r.ok)throw new Error(`HTTP ${r.status}`);
+    if(!r.ok){const detail=(await r.text()).replaceAll(process.env.BESTTIME_PRIVATE_KEY,"[redacted]").replace(/\\s+/g," ").slice(0,240);throw new Error(`HTTP ${r.status}${detail?`: ${detail}`:""}`);}
     const j=await r.json();
     if(j.status&&String(j.status).toLowerCase()==="error")throw new Error("Provider returned error status");
     const venues=(Array.isArray(j?.venues)?j.venues:[])
