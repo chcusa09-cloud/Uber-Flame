@@ -22,7 +22,7 @@ function withTiming(event){
   let pickupTarget=null;
   if(end){
     const endDate=new Date(end);
-    if(!Number.isNaN(endDate.getTime()))pickupTarget=new Date(endDate.getTime()-15*60000).toISOString();
+    if(!Number.isNaN(endDate.getTime()))pickupTarget=new Date(endDate.getTime()-30*60000).toISOString();
   }
   return {...event,end,endEstimated,pickupTarget};
 }
