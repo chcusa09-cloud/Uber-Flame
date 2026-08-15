@@ -374,6 +374,157 @@ body[data-mode="day"] .mode-chip{background:rgba(20,35,54,.55)}
 .admin-link{display:inline-block;padding:11px 14px;border-radius:12px;background:linear-gradient(135deg,var(--accent),#38d7ff);color:#061417;text-decoration:none;font-weight:800}.secure-note{color:#9fffdc}.target-time{color:#ffd166}.multi-day{color:#aebdd0}
 </style>
 
+
+<style id="daytime-light-theme">
+body[data-mode="day"]{
+  --bg:#f6f8fb;
+  --panel:#ffffff;
+  --text:#172033;
+  --muted:#5f6f84;
+  --border:rgba(45,65,95,.16);
+  color:var(--text);
+  background:
+    radial-gradient(circle at 12% 5%,rgba(73,198,255,.16),transparent 28%),
+    radial-gradient(circle at 88% 4%,rgba(255,209,102,.18),transparent 25%),
+    linear-gradient(180deg,#ffffff 0%,#f5f8fc 48%,#eef3f8 100%) !important;
+}
+body[data-mode="day"]:before{
+  opacity:.28;
+  background-image:
+    linear-gradient(rgba(40,62,92,.06) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(40,62,92,.06) 1px,transparent 1px);
+}
+body[data-mode="day"] header{
+  background:
+    linear-gradient(135deg,rgba(73,198,255,.12),rgba(255,255,255,.96) 52%,rgba(49,243,192,.10)),
+    #fff !important;
+  border-color:rgba(54,82,115,.15);
+  box-shadow:0 14px 38px rgba(39,62,88,.12);
+}
+body[data-mode="day"] h1{
+  background:linear-gradient(90deg,#172033,#147fa2 42%,#087a61);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+}
+body[data-mode="day"] .sub,
+body[data-mode="day"] .small,
+body[data-mode="day"] .meta,
+body[data-mode="day"] .source,
+body[data-mode="day"] .muted-note{color:#5f6f84}
+body[data-mode="day"] .badge,
+body[data-mode="day"] .mode-chip{
+  color:#145a4c;background:#ecfbf6;border-color:rgba(10,125,96,.22);
+}
+body[data-mode="day"] .card,
+body[data-mode="day"] details{
+  color:#172033;
+  background:linear-gradient(180deg,#ffffff,#f8fafc);
+  border-color:rgba(45,65,95,.14);
+  box-shadow:0 10px 28px rgba(39,62,88,.09);
+}
+body[data-mode="day"] label{color:#53657b}
+body[data-mode="day"] select,
+body[data-mode="day"] input[type=date],
+body[data-mode="day"] input[type=text],
+body[data-mode="day"] input[type=password]{
+  color:#172033;background:#fff;border-color:rgba(45,65,95,.22);
+  box-shadow:inset 0 1px 2px rgba(30,50,75,.04);
+}
+body[data-mode="day"] select:focus,
+body[data-mode="day"] input:focus{
+  border-color:#179bb7;box-shadow:0 0 0 3px rgba(23,155,183,.13);
+}
+body[data-mode="day"] .tabs{
+  background:rgba(255,255,255,.92);
+  border-color:rgba(45,65,95,.13);
+  box-shadow:0 8px 24px rgba(39,62,88,.08);
+}
+body[data-mode="day"] .tab{
+  color:#475b73;background:#eef3f8;border-color:rgba(45,65,95,.14);
+}
+body[data-mode="day"] .tab.active{
+  color:#fff;background:linear-gradient(135deg,#3079d6,#159bb8 62%,#0aa47c);
+  box-shadow:0 8px 22px rgba(28,121,158,.20);
+}
+body[data-mode="day"] .item{
+  color:#172033;
+  background:linear-gradient(135deg,#ffffff,#f7fafc) !important;
+  border-color:rgba(45,65,95,.14);
+  box-shadow:0 6px 18px rgba(39,62,88,.06);
+}
+body[data-mode="day"] .item:hover{
+  border-color:rgba(18,143,167,.34) !important;
+  box-shadow:0 10px 26px rgba(39,105,130,.10) !important;
+}
+body[data-mode="day"] .time{color:#087a61;text-shadow:none}
+body[data-mode="day"] .target-time{color:#a65c00}
+body[data-mode="day"] .pill{
+  color:#40546c;background:#eaf0f6;border-color:rgba(45,65,95,.13);
+}
+body[data-mode="day"] .pill.hot{
+  color:#063b31;background:linear-gradient(135deg,#a8f3dc,#5fe1b9);
+}
+body[data-mode="day"] .notice{
+  color:#36546d;background:linear-gradient(90deg,#e9f7ff,#f7fbff);
+  border-color:rgba(33,133,174,.18);border-left-color:#249dcc;
+}
+body[data-mode="day"] .notice.error{
+  color:#8d2c3b;background:#fff2f4;border-left-color:#d84c62;
+}
+body[data-mode="day"] .empty{
+  color:#617186;background:#f7f9fc;border-color:rgba(45,65,95,.20);
+}
+body[data-mode="day"] .smart-banner{
+  color:#172033;background:linear-gradient(135deg,#ffffff,#eef9fb);
+  border-color:rgba(18,143,167,.22);
+  box-shadow:0 10px 28px rgba(39,62,88,.09);
+}
+body[data-mode="day"] .smart-icon{background:linear-gradient(135deg,#dff7ff,#fff2c8)}
+body[data-mode="day"] .smart-title{color:#172033}
+body[data-mode="day"] .smart-score strong{color:#087a61}
+body[data-mode="day"] .source-health .pill.ok{
+  color:#087052;background:#e4f8f0;border-color:rgba(8,112,82,.20);
+}
+body[data-mode="day"] .source-health .pill.warn{
+  color:#8a6000;background:#fff7dc;border-color:rgba(138,96,0,.18);
+}
+body[data-mode="day"] .source-health .pill.bad{
+  color:#9b3343;background:#fff0f2;border-color:rgba(155,51,67,.18);
+}
+body[data-mode="day"] .packed-score{
+  color:#172033;background:#eef5f8;border-color:rgba(45,65,95,.14);
+}
+body[data-mode="day"] .packed-live{color:#087a61}
+body[data-mode="day"] .footerbar{
+  background:rgba(255,255,255,.94);
+  border-top-color:rgba(45,65,95,.14);
+  box-shadow:0 -8px 24px rgba(39,62,88,.08);
+}
+body[data-mode="day"] button.secondary{
+  color:#28445f;background:#eaf1f8;border-color:rgba(45,65,95,.16);
+}
+body[data-mode="day"] .scene-card,
+body[data-mode="day"] .tab-hero{
+  border-color:rgba(45,65,95,.18);
+  box-shadow:0 12px 28px rgba(39,62,88,.16);
+}
+body[data-mode="day"] .scene-content,
+body[data-mode="day"] .tab-hero-copy{color:#fff}
+body[data-mode="day"] .scene-foot,
+body[data-mode="day"] .scene-metrics span,
+body[data-mode="day"] .scene-next span,
+body[data-mode="day"] .tab-hero-copy small{color:#e7f0f8}
+body[data-mode="day"] .scene-overlay{
+  background:
+    linear-gradient(180deg,rgba(7,25,42,.04),rgba(7,25,42,.68) 58%,rgba(7,25,42,.90)),
+    linear-gradient(90deg,rgba(7,25,42,.56),transparent 68%);
+}
+body[data-mode="day"] .tab-hero-shade{
+  background:
+    linear-gradient(90deg,rgba(7,25,42,.88),rgba(7,25,42,.42) 62%,rgba(7,25,42,.10)),
+    linear-gradient(0deg,rgba(7,25,42,.62),transparent 55%);
+}
+</style>
+
 </head>
 <body>
 <div class="app">
