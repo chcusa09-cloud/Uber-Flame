@@ -96,8 +96,8 @@ module.exports=async(req,res)=>{
           unit:"miles",
           countryCode:"US",
           stateCode:"GA",
-          startDateTime:serviceStart,
-          endDateTime:serviceEnd,
+          startDateTime:serviceStart.replace(".000Z","Z"),
+          endDateTime:serviceEnd.replace(".000Z","Z"),
           size:"100",
           sort:"date,asc"
         });
