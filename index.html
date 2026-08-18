@@ -1907,9 +1907,10 @@ renderEvents=function(){
 
 function renderSecureHotspots(data){
   const rows=data?.hotspots||[];
+  const provider=data?.provider||"Foursquare";
   packedRows=rows.map((v,i)=>({name:v.name||"Venue",address:v.address||"Atlanta",type:v.type||"Venue",rating:null,isLive:false,busy:Number(v.score||0),score:Number(v.score||Math.max(55,90-i*2)),signal:v.signal||"Popularity-ranked demand estimate"}));
   $("packedDiag").classList.toggle("error",data?.sources?.Foursquare!=="ok");
-  $("packedDiag").textContent=data?.sources?.Foursquare==="ok"?`${packedRows.length} Foursquare venues ranked by popularity. This is a demand estimate, not live occupancy.`:"Foursquare demand hotspots are unavailable.";
+  $("packedDiag").textContent=data?.sources?.Foursquare==="ok"?`${packedRows.length} ${provider} venues ranked by demand. ${provider==="BestTime"?"Live busyness is used when available.":"This is a popularity estimate, not live occupancy."}`:`${provider} demand hotspots are unavailable.`;
   $("packedHeroHeadline").textContent=packedRows[0]?`#1 ${packedRows[0].name}`:"Popularity-ranked Atlanta venues";
   $("packedHeroSub").textContent=packedRows[0]?`${packedRows[0].address} • ${packedRows[0].signal}`:"No hotspot records returned";
   $("packedList").innerHTML=packedRows.length?packedRows.slice(0,15).map((v,i)=>`<div class="item"><div class="time">#${i+1}</div><div><div class="title">${esc(v.name)}</div><div class="meta">${esc(v.address)} • ${esc(v.type)}</div><div class="packed-live">${esc(v.signal)}</div></div><div class="packed-score"><strong>${Math.round(v.score)}</strong><span>POPULARITY</span></div></div>`).join(""):'<div class="empty">No demand hotspots returned.</div>';
@@ -1948,9 +1949,10 @@ refresh=async function(){
   const tasks=[
     fetch("/api/events?"+query).then(r=>{if(!r.ok)throw new Error(`Events HTTP ${r.status}`);return r.json()}),
     fetch("/api/flights?date="+encodeURIComponent($("datePick").value)).then(r=>{if(!r.ok)throw new Error(`Flights HTTP ${r.status}`);return r.json()}),
+    fetch("/api/besttime?"+new URLSearchParams({radius:$("radius").value,mode:getMode()})).then(r=>{if(!r.ok)throw new Error(`BestTime HTTP ${r.status}`);return r.json()}),
     fetch("/api/hotspots?"+new URLSearchParams({radius:$("radius").value,mode:getMode()})).then(r=>{if(!r.ok)throw new Error(`Hotspots HTTP ${r.status}`);return r.json()})
   ];
-  const [eventsR,flightsR,hotspotsR]=await Promise.allSettled(tasks);
+  const [eventsR,flightsR,bestTimeR,hotspotsR]=await Promise.allSettled(tasks);
   const sources={};
   if(eventsR.status==="fulfilled"){
     allEvents=(eventsR.value.events||[]).map(secureEvent).sort((a,b)=>new Date(a.start||0)-new Date(b.start||0));
@@ -1973,10 +1975,13 @@ refresh=async function(){
   }else{
     sources.AeroDataBox="error";flightRows=[];$("flightList").innerHTML='<div class="notice error">Flight route unavailable.</div>';
   }
-  if(hotspotsR.status==="fulfilled"){
-    Object.assign(sources,hotspotsR.value.sources||{});renderSecureHotspots(hotspotsR.value);
+  if(bestTimeR.status==="fulfilled"&&bestTimeR.value.sources?.BestTime==="ok"){
+    Object.assign(sources,bestTimeR.value.sources||{});
+    renderSecureHotspots({provider:"BestTime",sources:{Foursquare:"ok"},hotspots:(bestTimeR.value.venues||[]).map(v=>({...v,signal:v.live?`BestTime live busyness ${Math.round(v.busy)}%`:`BestTime forecast busyness ${Math.round(v.busy)}%`}))});
+  }else if(hotspotsR.status==="fulfilled"){
+    Object.assign(sources,bestTimeR.status==="fulfilled"?(bestTimeR.value.sources||{}):{BestTime:"error"},hotspotsR.value.sources||{});renderSecureHotspots(hotspotsR.value);
   }else{
-    sources.Foursquare="error";renderSecureHotspots({hotspots:[],sources:{Foursquare:"error"}});
+    Object.assign(sources,bestTimeR.status==="fulfilled"?(bestTimeR.value.sources||{}):{BestTime:"error"},{Foursquare:"error"});renderSecureHotspots({hotspots:[],sources:{Foursquare:"error"}});
   }
   renderPlan();renderSecureSources(sources);updateSmartRecommendation();
   const ok=Object.values(sources).filter(x=>x==="ok").length;
