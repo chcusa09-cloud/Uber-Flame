@@ -53,13 +53,38 @@ function phqNorm(e){
   });
 }
 
+function zonedDateTimeToUtc(date,time){
+  const wanted=Date.parse(`${date}T${time}Z`);
+  let guess=wanted;
+  const formatter=new Intl.DateTimeFormat("en-CA",{timeZone:"America/New_York",year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",second:"2-digit",hourCycle:"h23"});
+  for(let i=0;i<2;i++){
+    const parts=Object.fromEntries(formatter.formatToParts(new Date(guess)).filter(x=>x.type!=="literal").map(x=>[x.type,x.value]));
+    const shown=Date.UTC(+parts.year,+parts.month-1,+parts.day,+parts.hour,+parts.minute,+parts.second);
+    guess+=wanted-shown;
+  }
+  return new Date(guess);
+}
+
+function nextDate(date){
+  const d=new Date(`${date}T12:00:00Z`);d.setUTCDate(d.getUTCDate()+1);return d.toISOString().slice(0,10);
+}
+
+function mlbNorm(game){
+  const home=game.teams?.home?.team?.name||"Home";
+  const away=game.teams?.away?.team?.name||"Away";
+  const start=game.gameDate||null;
+  return withTiming({source:"MLB",title:`${away} at ${home}`,start,venue:game.venue?.name||"Truist Park",type:"Baseball",rank:100,gameStatus:game.status?.detailedState||"Scheduled",homeAway:home==="Atlanta Braves"?"home":"away",gamePk:game.gamePk||null});
+}
+
 module.exports=async(req,res)=>{
   const date=String(req.query.date||new Date().toISOString().slice(0,10));
   const radius=Math.max(5,Math.min(100,Number(req.query.radius||25)));
   const mode=req.query.mode==="day"?"day":"night";
   const events=[];
-  const sources={Ticketmaster:"missing",PredictHQ:"missing"};
+  const sources={Ticketmaster:"missing",PredictHQ:"missing",MLB:"error"};
   const jobs=[];
+  const serviceStart=zonedDateTimeToUtc(date,"04:00:00").toISOString();
+  const serviceEnd=zonedDateTimeToUtc(nextDate(date),"03:59:59").toISOString();
 
   if(process.env.TICKETMASTER_KEY){
     jobs.push((async()=>{
@@ -71,8 +96,8 @@ module.exports=async(req,res)=>{
           unit:"miles",
           countryCode:"US",
           stateCode:"GA",
-          startDateTime:`${date}T00:00:00Z`,
-          endDateTime:`${date}T23:59:59Z`,
+          startDateTime:serviceStart,
+          endDateTime:serviceEnd,
           size:"100",
           sort:"date,asc"
         });
@@ -95,8 +120,8 @@ module.exports=async(req,res)=>{
           ?"conferences,community,expos,festivals,performing-arts,sports"
           :"concerts,festivals,performing-arts,sports";
         const p=new URLSearchParams({
-          "active.gte":`${date}T00:00:00Z`,
-          "active.lte":`${date}T23:59:59Z`,
+          "active.gte":serviceStart,
+          "active.lte":serviceEnd,
           within:`${radius}mi@${ATL.lat},${ATL.lon}`,
           category:categories,
           limit:"100",
@@ -116,6 +141,17 @@ module.exports=async(req,res)=>{
       }
     })());
   }
+
+  jobs.push((async()=>{
+    try{
+      const p=new URLSearchParams({sportId:"1",teamId:"144",startDate:date,endDate:nextDate(date),hydrate:"team,venue,linescore"});
+      const r=await fetch("https://statsapi.mlb.com/api/v1/schedule?"+p,{signal:timeout(9000)});
+      if(!r.ok)throw new Error(`HTTP ${r.status}`);
+      const j=await r.json();
+      (j.dates||[]).flatMap(x=>x.games||[]).map(mlbNorm).filter(x=>x.start>=serviceStart&&x.start<=serviceEnd).forEach(x=>events.push(x));
+      sources.MLB="ok";
+    }catch(error){sources.MLB="error";sourceError("MLB",error);}
+  })());
 
   await Promise.allSettled(jobs);
   const seen=new Set();

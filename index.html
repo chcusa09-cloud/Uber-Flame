@@ -655,9 +655,16 @@ body .pill.delay{
 <div class="tabs">
   <button class="tab active" data-tab="plan">🚘 Driver Plan</button>
   <button class="tab" data-tab="events">🎤 Major Events</button>
+  <button class="tab" data-tab="braves">⚾ Braves / MLB</button>
   <button class="tab" data-tab="packed">🔥 Demand Hotspots</button>
   <button class="tab" data-tab="flights">✈️ ATL Flights</button>
   <button class="tab" data-tab="sources">🔌 Sources</button>
+</div>
+
+<div id="braves" class="tabpane" style="display:none">
+  <div class="tab-hero"><div class="tab-hero-img" style="background:linear-gradient(135deg,#0b2351,#b32332)"></div><div class="tab-hero-shade"></div><div class="tab-hero-copy"><span>BRAVES / MLB</span><strong>Game-day pickup radar</strong><small id="bravesHeroSub">Loading Braves schedule and driver guidance…</small></div></div>
+  <div class="notice" style="margin-bottom:10px">Home games prioritize Truist Park staging about 30 minutes before the estimated final out. Away games stay visible for schedule awareness but do not create an Atlanta pickup target.</div>
+  <div class="section"><h2>Atlanta Braves games</h2><div id="bravesList" class="list"></div></div>
 </div>
 
 <div id="plan" class="tabpane">
@@ -798,6 +805,9 @@ function fmtTime(iso){
   return d.toLocaleTimeString([], {hour:"numeric",minute:"2-digit"});
 }
 function fmtDateISO(d){return d.toISOString().slice(0,10)}
+function serviceDayISO(now=new Date()){
+  return new Date(now.getTime()-4*60*60*1000).toLocaleDateString("en-CA",{timeZone:"America/New_York"});
+}
 function dayName(dateStr){return new Date(dateStr+"T12:00:00").toLocaleDateString("en-US",{weekday:"long"})}
 function estimateEnd(startISO,type="event"){
   if(!startISO) return null;
@@ -1321,6 +1331,14 @@ function renderEvents(){
     <div><div class="title">${esc(e.title)}</div><div class="meta">${esc(e.venue)} • Starts ${fmtTime(e.start)} • expected outflow ${fmtTime(e.end)}</div><div class="meta">Best staging target: <b>${positionBefore(e.end,30)}</b></div></div><div class="pill hot">POSITION</div></div>`).join("")
     :'<div class="empty">Live event opportunities will appear after refresh.</div>';
 }
+function renderBraves(){
+  const games=allEvents.filter(e=>e.source==="MLB");
+  $("bravesHeroSub").textContent=games.length?`${games.length} game${games.length===1?"":"s"} in this service day • 4 AM Eastern rollover`:"No Braves game in this service day";
+  $("bravesList").innerHTML=games.length?games.map(e=>{
+    const home=e.homeAway==="home";
+    return `<div class="item"><div><div class="time">${fmtTime(e.start)}</div><div class="source">${esc(e.gameStatus||"Scheduled")}</div></div><div><div class="title">${esc(e.title)}</div><div class="meta">${esc(e.venue)} • Estimated end ${fmtTime(e.end)}</div><div class="meta">${home?`🚗 Stage near the Cumberland/Truist Park rideshare zone about <b>${positionBefore(e.end,30)}</b>; avoid postgame Battery gridlock until the crowd starts moving.`:"Away game • schedule visibility only; no Atlanta stadium positioning move."}</div></div><div class="pill ${home?"hot":""}">${home?"HOME":"AWAY"}</div></div>`;
+  }).join(""):'<div class="empty">No Braves game scheduled for this selected nightlife service day.</div>';
+}
 function showSourceError(source,msg){
   console.warn(source,msg);
 }
@@ -1756,7 +1774,7 @@ function populateQuickDates(){
   const sel=$("dateQuick");
   if(!sel) return;
   const current=$("datePick").value;
-  const base=new Date();
+  const base=new Date(serviceDayISO()+"T12:00:00");
   base.setHours(12,0,0,0);
 
   const options=[];
@@ -1872,7 +1890,7 @@ function secureEvent(e){
 
 renderEvents=function(){
   const majorOnly=$("minRank").value==="1";
-  const rows=allEvents.filter(e=>!majorOnly||e.major);
+  const rows=allEvents.filter(e=>e.source!=="MLB"&&(!majorOnly||e.major));
   $("eventCount").textContent=rows.length;
   $("eventHeroHeadline").textContent=getMode()==="day"?"Conventions, festivals & daytime crowd releases":"Concerts, sports & major crowd releases";
   $("eventHeroSub").textContent=rows.length?`${rows.length} opportunities • target arrival is 30 minutes before exit`:`No matching events for this date`;
@@ -1901,7 +1919,7 @@ function renderSecureSources(sources){
   const entries=Object.entries(sources||{});
   $("secureSourceList").innerHTML=entries.map(([name,status])=>`<div class="item"><div class="time">${status==="ok"?"✓":"—"}</div><div><div class="title">${esc(name)}</div><div class="meta">${status==="ok"?"Connected through secure server route":"Unavailable or not configured"}</div></div><div class="pill ${status==="ok"?"hot":""}">${esc(status)}</div></div>`).join("");
   const pills=$("healthStrip")?.querySelectorAll(".pill")||[];
-  const checks=[["Events",sources?.PredictHQ==="ok"],["Ticketmaster",sources?.Ticketmaster==="ok"],["Hotspots",sources?.Foursquare==="ok"],["ATL Flights",sources?.AeroDataBox==="ok"]];
+  const checks=[["Events",sources?.PredictHQ==="ok"],["Ticketmaster",sources?.Ticketmaster==="ok"],["MLB",sources?.MLB==="ok"],["ATL Flights",sources?.AeroDataBox==="ok"]];
   checks.forEach(([label,ok],i)=>{if(!pills[i])return;pills[i].textContent=label;pills[i].className=`pill ${ok?"ok":"bad"}`;});
 }
 
@@ -1937,11 +1955,11 @@ refresh=async function(){
   if(eventsR.status==="fulfilled"){
     allEvents=(eventsR.value.events||[]).map(secureEvent).sort((a,b)=>new Date(a.start||0)-new Date(b.start||0));
     Object.assign(sources,eventsR.value.sources||{});
-    renderEvents();
+    renderEvents();renderBraves();
     $("eventDiag").classList.remove("error");
     $("eventDiag").textContent=`Ticketmaster and PredictHQ returned ${allEvents.length} events through the secure server route.`;
   }else{
-    allEvents=[];renderEvents();$("eventDiag").classList.add("error");$("eventDiag").textContent="Event sources are unavailable.";
+    allEvents=[];renderEvents();renderBraves();$("eventDiag").classList.add("error");$("eventDiag").textContent="Event sources are unavailable.";
   }
   if(flightsR.status==="fulfilled"){
     const value=flightsR.value;
@@ -1973,7 +1991,7 @@ saveKeys=function(){};
 init=function(){
   const days=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
   $("dayPick").innerHTML=days.map(d=>`<option>${d}</option>`).join("");
-  $("datePick").value=new Date().toLocaleDateString("en-CA",{timeZone:"America/New_York"});
+  $("datePick").value=serviceDayISO();
   populateQuickDates();syncDateDay();loadKeys();setModeUI();
   document.querySelectorAll(".tab").forEach(b=>b.addEventListener("click",()=>{document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));b.classList.add("active");document.querySelectorAll(".tabpane").forEach(x=>x.style.display="none");$(b.dataset.tab).style.display="";}));
   $("datePick").addEventListener("change",()=>{syncDateDay();safeRefresh()});
@@ -1982,7 +2000,7 @@ init=function(){
   $("dayPick").addEventListener("change",()=>{const target=days.indexOf($("dayPick").value);const current=new Date($("datePick").value+"T12:00:00");let delta=(target-current.getDay()+7)%7;current.setDate(current.getDate()+delta);$("datePick").value=fmtDateISO(current);renderPlan();safeRefresh();});
   $("radius").addEventListener("change",safeRefresh);$("minRank").addEventListener("change",renderEvents);
   $("refresh").addEventListener("click",async()=>{const b=$("refresh");b.disabled=true;b.textContent="Updating…";await safeRefresh();});
-  $("todayBtn").addEventListener("click",()=>{$("datePick").value=new Date().toLocaleDateString("en-CA",{timeZone:"America/New_York"});syncDateDay();safeRefresh()});
+  $("todayBtn").addEventListener("click",()=>{$("datePick").value=serviceDayISO();syncDateDay();safeRefresh()});
   renderPlan();safeRefresh();
 };
 
