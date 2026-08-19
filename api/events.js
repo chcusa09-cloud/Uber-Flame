@@ -27,6 +27,17 @@ function withTiming(event){
   return {...event,end,endEstimated,pickupTarget};
 }
 
+function addressText(...parts){return parts.flat().filter(Boolean).map(String).map(x=>x.trim()).filter(Boolean).join(", ");}
+function easternHour(iso){
+  if(!iso)return null;
+  const hour=Number(new Intl.DateTimeFormat("en-US",{timeZone:"America/New_York",hour:"numeric",hourCycle:"h23"}).format(new Date(iso)));
+  return Number.isFinite(hour)?hour:null;
+}
+function nightlifeRelease(event){
+  const hour=easternHour(event.crowdRelease||event.releaseTime||event.end||event.start);
+  return hour!==null&&hour>=20;
+}
+
 function tmNorm(e){
   const v=e?._embedded?.venues?.[0]||{};
   return withTiming({
@@ -35,6 +46,7 @@ function tmNorm(e){
     start:e.dates?.start?.dateTime||(e.dates?.start?.localDate?`${e.dates.start.localDate}T${e.dates.start.localTime||"19:00:00"}`:null),
     end:e.dates?.end?.dateTime||(e.dates?.end?.localDate?`${e.dates.end.localDate}T${e.dates.end.localTime||"22:00:00"}`:null),
     venue:v.name||"Atlanta",
+    address:addressText(v.address?.line1,v.city?.name,v.state?.stateCode||v.state?.name,v.postalCode),
     type:e.classifications?.[0]?.segment?.name||"Event",
     rank:0
   });
@@ -48,6 +60,7 @@ function phqNorm(e){
     start:e.start||null,
     end:e.end||null,
     venue:entity.name||e.location?.[2]||"Atlanta",
+    address:entity.formatted_address||entity.address||entity.location?.formatted_address||"",
     type:e.category||"Event",
     rank:Number(e.local_rank||e.rank||0)
   });
@@ -73,7 +86,8 @@ function mlbNorm(game){
   const home=game.teams?.home?.team?.name||"Home";
   const away=game.teams?.away?.team?.name||"Away";
   const start=game.gameDate||null;
-  return withTiming({source:"MLB",title:`${away} at ${home}`,start,venue:game.venue?.name||"Truist Park",type:"Baseball",rank:100,gameStatus:game.status?.detailedState||"Scheduled",homeAway:home==="Atlanta Braves"?"home":"away",gamePk:game.gamePk||null});
+  const loc=game.venue?.location||{};
+  return withTiming({source:"MLB",title:`${away} at ${home}`,start,venue:game.venue?.name||"Truist Park",address:addressText(loc.address1,loc.city,loc.stateAbbrev||loc.state,loc.postalCode),type:"Baseball",rank:100,gameStatus:game.status?.detailedState||"Scheduled",homeAway:home==="Atlanta Braves"?"home":"away",gamePk:game.gamePk||null});
 }
 
 module.exports=async(req,res)=>{
@@ -116,9 +130,7 @@ module.exports=async(req,res)=>{
   if(process.env.PREDICTHQ_TOKEN){
     jobs.push((async()=>{
       try{
-        const categories=mode==="day"
-          ?"conferences,community,expos,festivals,performing-arts,sports"
-          :"concerts,festivals,performing-arts,sports";
+        const categories="conferences,community,expos,festivals,concerts,performing-arts,sports";
         const p=new URLSearchParams({
           "active.gte":serviceStart,
           "active.lte":serviceEnd,
@@ -133,7 +145,7 @@ module.exports=async(req,res)=>{
         });
         if(!r.ok)throw new Error(`HTTP ${r.status}`);
         const j=await r.json();
-        (j.results||[]).filter(x=>Number(x.local_rank||x.rank||0)>=25).forEach(x=>events.push(phqNorm(x)));
+        (j.results||[]).filter(x=>Number(x.local_rank||x.rank||0)>=25).map(phqNorm).filter(x=>mode!=="night"||nightlifeRelease(x)).forEach(x=>events.push(x));
         sources.PredictHQ="ok";
       }catch(error){
         sources.PredictHQ="error";
@@ -144,7 +156,7 @@ module.exports=async(req,res)=>{
 
   jobs.push((async()=>{
     try{
-      const p=new URLSearchParams({sportId:"1",teamId:"144",startDate:date,endDate:nextDate(date),hydrate:"team,venue,linescore"});
+      const p=new URLSearchParams({sportId:"1",teamId:"144",startDate:date,endDate:nextDate(date),hydrate:"team,venue(location),linescore"});
       const r=await fetch("https://statsapi.mlb.com/api/v1/schedule?"+p,{signal:timeout(9000)});
       if(!r.ok)throw new Error(`HTTP ${r.status}`);
       const j=await r.json();
@@ -155,7 +167,7 @@ module.exports=async(req,res)=>{
 
   await Promise.allSettled(jobs);
   const seen=new Set();
-  const dedup=events.filter(e=>{
+  const dedup=events.filter(e=>mode!=="night"||e.source==="MLB"||nightlifeRelease(e)).filter(e=>{
     const k=(e.title+"|"+e.start).toLowerCase();
     if(seen.has(k))return false;
     seen.add(k);

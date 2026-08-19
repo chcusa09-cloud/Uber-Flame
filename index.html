@@ -276,6 +276,10 @@ button:disabled{opacity:.55;cursor:not-allowed;transform:none!important}
 .smart-score span{
   display:block;font-size:.7rem;color:var(--muted)
 }
+.smart-banner.go-now{border-color:rgba(255,209,102,.62);background:linear-gradient(135deg,rgba(71,43,4,.96),rgba(17,25,48,.96));box-shadow:0 14px 36px rgba(255,177,31,.18)}
+.go-now-label{font-size:.72rem;font-weight:950;letter-spacing:.14em;color:#ffd166;margin-bottom:3px}
+.nav-link{display:inline-flex;align-items:center;gap:5px;margin-top:6px;color:#8fffe0;font-size:.82rem;font-weight:850;text-decoration:none;padding:5px 8px;border:1px solid rgba(49,243,192,.28);border-radius:9px;background:rgba(5,20,25,.46)}
+.nav-link:focus,.nav-link:hover{color:white;border-color:#31f3c0}
 .source-health{
   display:flex;gap:6px;flex-wrap:wrap;margin:0 0 10px
 }
@@ -634,11 +638,13 @@ body .pill.delay{
 
 
 <div id="loadingBar" class="loading-bar"><span></span></div>
-<div id="smartBanner" class="smart-banner">
+<div id="smartBanner" class="smart-banner go-now">
   <div class="smart-icon">⚡</div>
   <div>
+    <div class="go-now-label">LIVE • GO NOW</div>
     <div class="smart-title" id="smartTitle">Best move loading…</div>
     <div class="smart-sub" id="smartSub">Comparing driver plan, events, demand hotspots and ATL disruptions.</div>
+    <a id="goNowNav" class="nav-link" href="#" target="_blank" rel="noopener" style="display:none">🧭 Navigate now</a>
   </div>
   <div class="smart-score">
     <strong id="smartScore">—</strong>
@@ -1331,12 +1337,17 @@ function renderEvents(){
     <div><div class="title">${esc(e.title)}</div><div class="meta">${esc(e.venue)} • Starts ${fmtTime(e.start)} • expected outflow ${fmtTime(e.end)}</div><div class="meta">Best staging target: <b>${positionBefore(e.end,30)}</b></div></div><div class="pill hot">POSITION</div></div>`).join("")
     :'<div class="empty">Live event opportunities will appear after refresh.</div>';
 }
+function mapsUrl(name,address){return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([name,address].filter(Boolean).join(" "))}`;}
+function navLink(name,address,label="Navigate"){
+  if(!name&&!address)return "";
+  return `<a class="nav-link" href="${esc(mapsUrl(name,address))}" target="_blank" rel="noopener">🧭 ${esc(label)}</a>`;
+}
 function renderBraves(){
   const games=allEvents.filter(e=>e.source==="MLB");
   $("bravesHeroSub").textContent=games.length?`${games.length} game${games.length===1?"":"s"} in this service day • 4 AM Eastern rollover`:"No Braves game in this service day";
   $("bravesList").innerHTML=games.length?games.map(e=>{
     const home=e.homeAway==="home";
-    return `<div class="item"><div><div class="time">${fmtTime(e.start)}</div><div class="source">${esc(e.gameStatus||"Scheduled")}</div></div><div><div class="title">${esc(e.title)}</div><div class="meta">${esc(e.venue)} • Estimated end ${fmtTime(e.end)}</div><div class="meta">${home?`🚗 Stage near the Cumberland/Truist Park rideshare zone about <b>${positionBefore(e.end,30)}</b>; avoid postgame Battery gridlock until the crowd starts moving.`:"Away game • schedule visibility only; no Atlanta stadium positioning move."}</div></div><div class="pill ${home?"hot":""}">${home?"HOME":"AWAY"}</div></div>`;
+    return `<div class="item"><div><div class="time">${fmtTime(e.start)}</div><div class="source">${esc(e.gameStatus||"Scheduled")}</div></div><div><div class="title">${esc(e.title)}</div><div class="meta">${esc(e.venue)}${e.address?` • ${esc(e.address)}`:""} • Estimated end ${fmtTime(e.end)}</div><div class="meta">${home?`🚗 Stage near the Cumberland/Truist Park rideshare zone about <b>${positionBefore(e.end,30)}</b>; avoid postgame Battery gridlock until the crowd starts moving.`:"Away game • schedule visibility only; no Atlanta stadium positioning move."}</div>${navLink(e.venue,e.address||"")}</div><div class="pill ${home?"hot":""}">${home?"HOME":"AWAY"}</div></div>`;
   }).join(""):'<div class="empty">No Braves game scheduled for this selected nightlife service day.</div>';
 }
 function showSourceError(source,msg){
@@ -1899,10 +1910,10 @@ renderEvents=function(){
   $("eventList").innerHTML=rows.length?rows.slice(0,60).map(e=>{
     const target=e.end&&!e.noPickupTarget?positionBefore(e.end,30):"No single target";
     const timing=e.end?`Ends ${fmtTime(e.end)}${e.estimate?" est.":""}`:"End time unavailable";
-    return `<div class="item"><div><div class="time target-time">${esc(target)}</div><div class="source">${e.noPickupTarget?"MULTI-DAY":"BE THERE BY"}</div></div><div><div class="title">${esc(e.title)}</div><div class="meta">Starts ${fmtTime(e.start)} • ${timing} • ${esc(e.venue||"Atlanta")}</div><div class="meta">${e.noPickupTarget?'<span class="multi-day">Ongoing event — monitor its daily closing schedule</span>':`🚗 Target pickup staging: <b>${esc(target)}</b>`}</div></div><div class="pill ${e.major?"hot":""}">${e.major?"MAJOR":"Event"}</div></div>`;
+    return `<div class="item"><div><div class="time target-time">${esc(target)}</div><div class="source">${e.noPickupTarget?"MULTI-DAY":"BE THERE BY"}</div></div><div><div class="title">${esc(e.title)}</div><div class="meta">Starts ${fmtTime(e.start)} • ${timing} • ${esc(e.venue||"Atlanta")}${e.address?` • ${esc(e.address)}`:""}</div><div class="meta">${e.noPickupTarget?'<span class="multi-day">Ongoing event — monitor its daily closing schedule</span>':`🚗 Target pickup staging: <b>${esc(target)}</b>`}</div>${navLink(e.venue,e.address||"",e.address?"Open address":"Find venue")}</div><div class="pill ${e.major?"hot":""}">${e.major?"MAJOR":"Event"}</div></div>`;
   }).join(""):'<div class="empty">No event opportunities found for the selected filters.</div>';
   const top=rows.filter(e=>e.end&&!e.noPickupTarget).sort((a,b)=>new Date(a.end)-new Date(b.end)).slice(0,4);
-  $("liveOpportunity").innerHTML=top.length?top.map(e=>`<div class="item"><div class="time">${positionBefore(e.end,30)}</div><div><div class="title">${esc(e.title)}</div><div class="meta">${esc(e.venue)} • expected outflow ${fmtTime(e.end)}</div><div class="meta">Best staging target: <b>${positionBefore(e.end,30)}</b></div></div><div class="pill hot">POSITION</div></div>`).join(""):'<div class="empty">No near-term event exit targets available.</div>';
+  $("liveOpportunity").innerHTML=top.length?top.map(e=>`<div class="item"><div class="time">${positionBefore(e.end,30)}</div><div><div class="title">${esc(e.title)}</div><div class="meta">${esc(e.venue)}${e.address?` • ${esc(e.address)}`:""} • expected outflow ${fmtTime(e.end)}</div><div class="meta">Best staging target: <b>${positionBefore(e.end,30)}</b></div>${navLink(e.venue,e.address||"")}</div><div class="pill hot">POSITION</div></div>`).join(""):'<div class="empty">No near-term event exit targets available.</div>';
 };
 
 function renderSecureHotspots(data){
@@ -1913,7 +1924,7 @@ function renderSecureHotspots(data){
   $("packedDiag").textContent=data?.sources?.Foursquare==="ok"?`${packedRows.length} ${provider} venues ranked by demand. ${provider==="BestTime"?"Live busyness is used when available.":"This is a popularity estimate, not live occupancy."}`:`${provider} demand hotspots are unavailable.`;
   $("packedHeroHeadline").textContent=packedRows[0]?`#1 ${packedRows[0].name}`:"Popularity-ranked Atlanta venues";
   $("packedHeroSub").textContent=packedRows[0]?`${packedRows[0].address} • ${packedRows[0].signal}`:"No hotspot records returned";
-  $("packedList").innerHTML=packedRows.length?packedRows.slice(0,15).map((v,i)=>`<div class="item"><div class="time">#${i+1}</div><div><div class="title">${esc(v.name)}</div><div class="meta">${esc(v.address)} • ${esc(v.type)}</div><div class="packed-live">${esc(v.signal)}</div></div><div class="packed-score"><strong>${Math.round(v.score)}</strong><span>POPULARITY</span></div></div>`).join(""):'<div class="empty">No demand hotspots returned.</div>';
+  $("packedList").innerHTML=packedRows.length?packedRows.slice(0,15).map((v,i)=>`<div class="item"><div class="time">#${i+1}</div><div><div class="title">${esc(v.name)}</div><div class="meta">${esc(v.address)} • ${esc(v.type)}</div><div class="packed-live">${esc(v.signal)}</div>${navLink(v.name,v.address)}</div><div class="packed-score"><strong>${Math.round(v.score)}</strong><span>POPULARITY</span></div></div>`).join(""):'<div class="empty">No demand hotspots returned.</div>';
 }
 
 function renderSecureSources(sources){
@@ -1926,19 +1937,21 @@ function renderSecureSources(sources){
 
 updateSmartRecommendation=function(){
   const candidates=[];
-  allEvents.filter(e=>e.end&&!e.noPickupTarget).forEach(e=>{
+  allEvents.filter(e=>e.end&&!e.noPickupTarget&&(e.source!=="MLB"||e.homeAway==="home")).forEach(e=>{
     const target=new Date(new Date(e.end).getTime()-30*60000);
     const mins=minutesUntil(target);
-    if(mins>=-45&&mins<=360)candidates.push({score:(e.major?92:75)-Math.max(0,Math.abs(mins-20))/12,title:`${e.venue} • position ${fmtTime(target.toISOString())}`,sub:`${e.title} • expected exit ${fmtTime(e.end)}`});
+    if(mins>=-60&&mins<=360)candidates.push({score:(e.source==="MLB"?96:e.major?92:76)-Math.max(0,Math.abs(mins-15))/10,title:`${e.venue} • ${mins<=10?"GO NOW":`leave in ${Math.max(0,Math.round(mins-10))} min`}`,sub:`${e.title} • crowd release ${fmtTime(e.end)}${e.address?` • ${e.address}`:""}`,name:e.venue,address:e.address||"",kind:e.source==="MLB"?"BRAVES":"EVENT"});
   });
   const airport=buildAirportOpportunity(flightRows);
-  if(airport)candidates.push({score:airport.level==="HIGH"?98:84,title:`ATL Airport • position ${fmtTime(airport.position.toISOString())}`,sub:`${airport.cancel} cancellations • ${airport.delay} delays • ${airport.level}`});
-  packedRows.slice(0,3).forEach((v,i)=>candidates.push({score:Math.max(58,Number(v.score||70)-i*2),title:`🔥 ${v.name}`,sub:`${v.signal} • ${v.address}`}));
+  if(airport)candidates.push({score:airport.level==="HIGH"?99:85,title:"ATL Airport • GO NOW",sub:`${airport.cancel} cancellations • ${airport.delay} delays • ${airport.level} disruption signal`,name:"Hartsfield-Jackson Atlanta International Airport",address:"6000 N Terminal Pkwy, Atlanta, GA 30320",kind:"AIRPORT"});
+  packedRows.slice(0,5).forEach((v,i)=>candidates.push({score:Math.max(60,Number(v.score||70)-i*2),title:`${v.name} • GO NOW`,sub:`${v.signal} • ${v.address}`,name:v.name,address:v.address,kind:"PACKED NOW"}));
   candidates.sort((a,b)=>b.score-a.score);
   const best=candidates[0];
-  $("smartTitle").textContent=best?.title||(getMode()==="day"?"No urgent daytime move yet":"No urgent move yet");
-  $("smartSub").textContent=best?.sub||"Keep the routine driver plan open and refresh closer to the next positioning window.";
-  $("smartScore").textContent=!best?"WATCH":best.score>=90?"HIGH":best.score>=76?"GOOD":"WATCH";
+  $("smartTitle").textContent=best?.title||"No strong live pickup move yet";
+  $("smartSub").textContent=best?.sub||"Refresh shortly; no event, airport, Braves, or venue signal currently clears the move threshold.";
+  $("smartScore").textContent=best?.kind||"WATCH";
+  const nav=$("goNowNav");
+  if(best&&(best.name||best.address)){nav.href=mapsUrl(best.name,best.address);nav.style.display="inline-flex";nav.textContent=`🧭 Navigate to ${best.name||"pickup area"}`;}else{nav.style.display="none";nav.removeAttribute("href");}
 };
 
 refresh=async function(){
